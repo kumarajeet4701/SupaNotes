@@ -1,97 +1,141 @@
-This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
+# SupaNotes
 
-# Getting Started
+A simple and clean notes application built with React Native and Supabase. Create, edit, delete, and manage your personal notes with ease. All your data is securely stored and synced with Supabase.
 
-> **Note**: Make sure you have completed the [Set Up Your Environment](https://reactnative.dev/docs/set-up-your-environment) guide before proceeding.
+## Features
 
-## Step 1: Start Metro
+- **Authentication** - Sign up and log in with email & password
+- **Create Notes** - Add new notes with title and content
+- **Edit Notes** - Update existing notes anytime
+- **Delete Notes** - Remove notes you no longer need
+- **Search Notes** - Find notes by title with real-time search
+- **Auto-save** - Notes auto-save when you navigate back
+- **Offline Support** - App works smoothly even without internet
+- **Session Persistence** - Stay logged in even after closing the app
+- **Pull-to-Refresh** - Refresh your notes list with a simple pull gesture
+- **User Privacy** - See only your own notes (secure with RLS policies)
 
-First, you will need to run **Metro**, the JavaScript build tool for React Native.
+## 🛠 Tech Stack
 
-To start the Metro dev server, run the following command from the root of your React Native project:
+- **React Native** - Mobile app framework
+- **Supabase** - Backend (Authentication + Database)
+- **Formik** - Form validation
+- **Yup** - Schema validation
+- **React Navigation** - Navigation between screens
+- **AsyncStorage** - Local session storage
 
-```sh
-# Using npm
-npm start
+## 📋 Project Structure
 
-# OR using Yarn
-yarn start
+```
+src/
+├── api/              # Supabase client setup
+├── assets/           # Images and icons
+├── config/           # Environment variables (Supabase credentials)
+├── constants/        # Colors, styles, images
+├── context/          # Auth context (state management)
+├── hooks/            # Custom hooks (useNotes, useDebounce)
+├── navigation/       # Navigation setup
+├── utils/            # Helper functions, validation schemas
+└── views/            # Screen components
+    ├── components/   # Reusable UI components
+    └── screens/      # Auth and Notes screens
 ```
 
-## Step 2: Build and run your app
+### Running the App
+npx react-native run-android
 
-With Metro running, open a new terminal window/pane from the root of your React Native project, and use one of the following commands to build and run your Android or iOS app:
+## 📱 Building APK
 
-### Android
-
-```sh
-# Using npm
-npm run android
-
-# OR using Yarn
-yarn android
+**Build APK (for testing):**
+```bash
+cd android
+./gradlew assembleDebug
+cd ..
 ```
 
-### iOS
+Output: `android/app/build/outputs/apk/debug/app-debug.apk`
 
-For iOS, remember to install CocoaPods dependencies (this only needs to be run on first clone or after updating native deps).
+## 🗄 Supabase Setup
 
-The first time you create a new project, run the Ruby bundler to install CocoaPods itself:
+### 1. Create the Notes Table
 
-```sh
-bundle install
+Run this SQL in your Supabase project's SQL Editor:
+
+```sql
+create table notes (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  title text not null,
+  content text not null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table notes enable row level security;
+
+create policy "Select own notes" on notes for select using (auth.uid() = user_id);
+create policy "Insert own notes" on notes for insert with check (auth.uid() = user_id);
+create policy "Update own notes" on notes for update using (auth.uid() = user_id);
+create policy "Delete own notes" on notes for delete using (auth.uid() = user_id);
 ```
 
-Then, and every time you update your native dependencies, run:
+### . Disable Email Confirmation
+Go to **Authentication → Providers → Email**
 
-```sh
-bundle exec pod install
-```
 
-For more information, please visit [CocoaPods Getting Started guide](https://guides.cocoapods.org/using/getting-started.html).
+This lets users sign up without email verification.
 
-```sh
-# Using npm
-npm run ios
+## How Authentication Works
 
-# OR using Yarn
-yarn ios
-```
+- Users sign up with **email + password + full name**
+- Full name is saved to user metadata
+- Session stored locally using **AsyncStorage**
+- Session auto-restores on app startup
+- Passwords encrypted by Supabase
+- Users can only see their own notes (enforced by RLS)
 
-If everything is set up correctly, you should see your new app running in the Android Emulator, iOS Simulator, or your connected device.
+## How Notes Work
 
-This is one way to run your app — you can also build it directly from Android Studio or Xcode.
+- Each note has: **id, user_id, title, content, created_at, updated_at**
+- Users see only their own notes (RLS policy enforces this)
+- Notes auto-save when navigating back
+- Search filters notes by title in real-time (debounced 300ms)
+- Delete removes note instantly
 
-## Step 3: Modify your app
+## Offline Mode
 
-Now that you have successfully run the app, let's make changes!
+The app works offline but with limits:
 
-Open `App.tsx` in your text editor of choice and make some changes. When you save, your app will automatically update and reflect these changes — this is powered by [Fast Refresh](https://reactnative.dev/docs/fast-refresh).
+- ✅ Can view saved notes
+- ✅ Can logout
+- ❌ Cannot create/edit notes (requires internet)
+- ❌ Cannot refresh (requires internet)
+- Shows "You are offline" message
 
-When you want to forcefully reload, for example to reset the state of your app, you can perform a full reload:
+## Screens Overview
 
-- **Android**: Press the <kbd>R</kbd> key twice or select **"Reload"** from the **Dev Menu**, accessed via <kbd>Ctrl</kbd> + <kbd>M</kbd> (Windows/Linux) or <kbd>Cmd ⌘</kbd> + <kbd>M</kbd> (macOS).
-- **iOS**: Press <kbd>R</kbd> in iOS Simulator.
+| Screen | Purpose |
+|--------|---------|
+| **Login** | Sign in with email + password |
+| **Signup** | Create new account with full name |
+| **Notes List** | View all notes, search, pull-to-refresh |
+| **Note Detail** | Create or edit a note |
 
-## Congratulations! :tada:
+## Auto-Save Feature
 
-You've successfully run and modified your React Native App. :partying_face:
+1. User types title and content
+2. User presses back button
+3. If both fields filled → note saves automatically
+4. If not filled → shows error, doesn't save
+5. User returned to notes list
 
-### Now what?
+## Key Features Explained
 
-- If you want to add this new React Native code to an existing application, check out the [Integration guide](https://reactnative.dev/docs/integration-with-existing-apps).
-- If you're curious to learn more about React Native, check out the [docs](https://reactnative.dev/docs/getting-started).
+**Pull-to-Refresh:** Swipe down on notes list to refresh from server
 
-# Troubleshooting
+**Debounced Search:** Search waits 300ms after you stop typing before filtering
 
-If you're having issues getting the above steps to work, see the [Troubleshooting](https://reactnative.dev/docs/troubleshooting) page.
+**Sidebar:** Shows user's full name and email, has logout button
 
-# Learn More
+**Session Persistence:** Closes app → opens app → still logged in
 
-To learn more about React Native, take a look at the following resources:
-
-- [React Native Website](https://reactnative.dev) - learn more about React Native.
-- [Getting Started](https://reactnative.dev/docs/environment-setup) - an **overview** of React Native and how setup your environment.
-- [Learn the Basics](https://reactnative.dev/docs/getting-started) - a **guided tour** of the React Native **basics**.
-- [Blog](https://reactnative.dev/blog) - read the latest official React Native **Blog** posts.
-- [`@facebook/react-native`](https://github.com/facebook/react-native) - the Open Source; GitHub **repository** for React Native.
